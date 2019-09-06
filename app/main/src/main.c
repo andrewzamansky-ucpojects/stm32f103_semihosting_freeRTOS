@@ -16,6 +16,10 @@
 #include "dev_management_api.h"
 
 #include "os_wrapper.h"
+#include "adc_api.h"
+
+#define DEBUG
+#include "PRINTF_api.h"
 
 /***************   defines    *******************/
 
@@ -27,9 +31,7 @@
 
 /***********   loacal variables    **************/
 
-static char hello_world_str[] = "++++++++hello world x\r\n";
-
-
+extern struct dev_desc_t * adc_dev;
 /**
  * test_thread_func()
  *
@@ -39,26 +41,26 @@ static void test_thread_func(void * aHandle)
 {
 	uint32_t cnt;
 	struct dev_desc_t * dev;
+	uint32_t adc_val;
 
 	dev = DEV_OPEN("semihosting_dev");
 	if (NULL != dev)
 	{
 		DEV_IOCTL_0_PARAMS(dev, IOCTL_DEVICE_START);
+		PRINTF_API_AddDebugOutput(dev);
 	}
+
+	DEV_IOCTL_0_PARAMS(adc_dev, IOCTL_DEVICE_START);
 
 	cnt = 0;
 	while (1)
 	{
-		hello_world_str[20] = '0' + (uint8_t)cnt++;
-		if (9 == cnt)
-		{
-			cnt = 0;
-		}
-		if (NULL != dev)
-		{
-			DEV_WRITE(
-				dev, (uint8_t*)hello_world_str, sizeof(hello_world_str) - 1);
-		}
+		cnt++;
+		DEV_IOCTL_1_PARAMS(adc_dev, IOCTL_ADC_GET_CURRENT_VALUE_mV, &adc_val);
+		PRINTF_DBG("%05d  %d.%03dV\r\n", cnt, adc_val / 1000, adc_val % 1000);
+
+		while (PRINTF_API_print_from_debug_buffer(64));
+
 		os_delay_ms(1000);
 
 		//os_stack_test(); //requires PRINTF_DBG
@@ -82,6 +84,8 @@ int main(void)
 	if (NULL == dev) goto error;
 	os_set_tick_timer_dev(dev);
 	os_init();
+
+	PRINTF_API_init();
 
 	os_create_task("test_thread" , test_thread_func, NULL,
 				TEST_THREAD_STACK_SIZE_BYTES, TEST_THREAD_PRIORITY);
