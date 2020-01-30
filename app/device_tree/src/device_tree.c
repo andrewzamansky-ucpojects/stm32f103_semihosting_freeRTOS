@@ -1,7 +1,6 @@
 #include "_project.h"
 
 #include "dev_management_api.h"
-#include "dt_clocks_stm32f10x.c"
 
 
 /***********************************/
